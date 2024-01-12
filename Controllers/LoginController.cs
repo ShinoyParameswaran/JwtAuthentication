@@ -1,10 +1,15 @@
 ﻿using JwtInDotnetCore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System;
+using System.Collections.Generic;
+
 
 namespace JwtInDotnetCore.Controllers
 {
@@ -19,8 +24,8 @@ namespace JwtInDotnetCore.Controllers
             _config = config;
             _users = new List<User>
         {
-            new User("user1", HashPassword("password1"), "user1@example.com", new List<string> {"User"}),
-            new User("user2", HashPassword("password2"), "user2@example.com", new List<string> {"Admin"})
+            new User(1001,"user1", HashPassword("password1"), "user1@example.com", new List<string> {"User"}),
+            new User(1002,"user2", HashPassword("password2"), "user2@example.com", new List<string> {"Admin"})
         };
         }
 
@@ -42,23 +47,39 @@ namespace JwtInDotnetCore.Controllers
             {
                 return Unauthorized("Invalid username or password.");
             }
-            
+            var token = GenerateJwtToken(user);
+
+
+            return Ok(token);
+        }
+        private string GenerateJwtToken(User user)
+        {
             //If login usrename and password are correct then proceed to generate token
+
+            var authClaims = new List<Claim>
+            {
+               new Claim(ClaimTypes.Name, user.UserName),
+               new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),                             
+            };
+
+            foreach (var userRole in user.Roles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
 
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var Sectoken = new JwtSecurityToken(_config["Jwt:Issuer"],
-              _config["Jwt:Issuer"],
-              null,
+              _config["Jwt:Audience"],
+              authClaims,
               expires: DateTime.Now.AddMinutes(120),
               signingCredentials: credentials);
 
-            var token =  new JwtSecurityTokenHandler().WriteToken(Sectoken);
+            var token = new JwtSecurityTokenHandler().WriteToken(Sectoken);
 
-            return Ok(token);
+            return token;            
         }
-
         private bool VerifyPassword(string enteredPassword, string hashedPassword)
         {
             // In a production environment, use a secure password hashing library (e.g., BCrypt)

@@ -10,7 +10,7 @@ namespace JwtInDotnetCore.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class DashboardController : ControllerBase
+    public class UserDashboardController : ControllerBase
     {
         [HttpGet]
         public IActionResult Get() 
